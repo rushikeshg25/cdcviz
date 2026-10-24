@@ -44,7 +44,7 @@ func Compute(events []event.Event, anomalies []anomaly.Anomaly) Summary {
 		AnomaliesByKind:     map[string]int{},
 		AnomaliesBySeverity: map[string]int{},
 	}
-	globalKeys := map[string]bool{}
+	globalKeys := map[event.RecordID]bool{}
 	tableKeys := map[string]map[string]bool{}
 
 	for _, ev := range events {
@@ -66,7 +66,7 @@ func Compute(events []event.Event, anomalies []anomaly.Anomaly) Summary {
 		}
 		summary.Events++
 		summary.Ops[ev.Op.String()]++
-		globalKeys[ev.Key()] = true
+		globalKeys[ev.Identity()] = true
 		if tableKeys[ev.Table] == nil {
 			tableKeys[ev.Table] = map[string]bool{}
 		}

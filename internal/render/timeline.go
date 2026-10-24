@@ -44,21 +44,21 @@ func Timeline(events []event.Event, out io.Writer, opts TimelineOptions) {
 		key   string
 		count int
 	}
-	groups := map[string]*group{}
-	var order []string
+	groups := map[event.RecordID]*group{}
+	var order []event.RecordID
 	for _, ev := range events {
-		g := groups[ev.Key()]
+		g := groups[ev.Identity()]
 		if g == nil {
 			g = &group{key: ev.Key()}
-			groups[ev.Key()] = g
-			order = append(order, ev.Key())
+			groups[ev.Identity()] = g
+			order = append(order, ev.Identity())
 		}
 		g.count++
 	}
 
 	labelWidth := 12
 	for _, key := range order {
-		if n := len([]rune(key)); n > labelWidth {
+		if n := len([]rune(groups[key].key)); n > labelWidth {
 			labelWidth = n
 		}
 	}
@@ -84,24 +84,27 @@ func Timeline(events []event.Event, out io.Writer, opts TimelineOptions) {
 		if a.count != b.count {
 			return a.count > b.count
 		}
-		return a.key < b.key
+		if order[i].Table != order[j].Table {
+			return order[i].Table < order[j].Table
+		}
+		return order[i].PK < order[j].PK
 	})
 
-	columns := make(map[string][]event.Op, len(order))
+	columns := make(map[event.RecordID][]event.Op, len(order))
 	for i := range events {
 		ev := events[i]
 		column := 0
 		if len(events) > 1 {
 			column = i * (barWidth - 1) / (len(events) - 1)
 		}
-		marks := columns[ev.Key()]
+		marks := columns[ev.Identity()]
 		if marks == nil {
 			marks = make([]event.Op, barWidth)
 		}
 		// Later events overwrite earlier ones when they share a column; the
 		// event count still accounts for every event.
 		marks[column] = ev.Op
-		columns[ev.Key()] = marks
+		columns[ev.Identity()] = marks
 	}
 
 	rendered := 0
@@ -120,7 +123,7 @@ func Timeline(events []event.Event, out io.Writer, opts TimelineOptions) {
 			bar += theme.ColorOp(op, OpSymbol(op))
 		}
 		fmt.Fprintf(out, "%-*s %s %s\n",
-			labelWidth, truncate(key, labelWidth),
+			labelWidth, truncate(groups[key].key, labelWidth),
 			bar,
 			theme.Dim(fmt.Sprintf("%3d events", groups[key].count)))
 	}

@@ -66,7 +66,16 @@ type Event struct {
 	Line int `json:"-"`
 }
 
-// Key identifies the record the event belongs to.
+// RecordID identifies a row without confusing delimiters in table names and keys.
+type RecordID struct {
+	Table string
+	PK    string
+}
+
+// Identity returns the record's comparable identity for grouping and lookup.
+func (e Event) Identity() RecordID { return RecordID{Table: e.Table, PK: e.PK} }
+
+// Key returns the human-readable record label, not a unique map key.
 func (e Event) Key() string { return e.Table + "/" + e.PK }
 
 // Validate checks the invariants required to render and analyze an event.

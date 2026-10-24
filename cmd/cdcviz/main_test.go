@@ -291,3 +291,30 @@ func TestHelp(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordIdentityBoundaries(t *testing.T) {
+	for _, delimiter := range []string{"/", "|"} {
+		t.Run(delimiter, func(t *testing.T) {
+			path := inputFile(t, `{"op":"i","table":"a`+delimiter+`b","pk":"c","after":{}}`+"\n"+
+				`{"op":"i","table":"a","pk":"b`+delimiter+`c","after":{}}`+"\n")
+			out, _, err := runCLI(t, "stats", "--input", path, "--json")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var summary stats.Summary
+			if err := json.Unmarshal([]byte(out), &summary); err != nil {
+				t.Fatal(err)
+			}
+			if summary.Keys != 2 || summary.Anomalies != 0 {
+				t.Errorf("keys=%d anomalies=%d; want 2, 0", summary.Keys, summary.Anomalies)
+			}
+			out, _, err = runCLI(t, "timeline", "--input", path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(out, "2 records") {
+				t.Errorf("merged unrelated records:\n%s", out)
+			}
+		})
+	}
+}

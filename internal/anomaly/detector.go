@@ -66,8 +66,8 @@ type keyState struct {
 func Detect(events []event.Event) []Anomaly {
 	var out []Anomaly
 
-	states := make(map[string]*keyState)
-	signatures := make(map[string]int)
+	states := make(map[event.RecordID]*keyState)
+	signatures := make(map[eventSignature]int)
 	var lastLSN uint64
 
 	add := func(index int, ev event.Event, kind Kind, severity Severity, format string, args ...any) {
@@ -85,7 +85,7 @@ func Detect(events []event.Event) []Anomaly {
 	}
 
 	for i, ev := range events {
-		key := ev.Key()
+		key := ev.Identity()
 		state := states[key]
 		if state == nil {
 			state = &keyState{}
@@ -162,14 +162,19 @@ func Detect(events []event.Event) []Anomaly {
 	return out
 }
 
-func signature(ev event.Event) string {
-	return fmt.Sprintf("%d|%s|%s|%s|%s|%s|%s",
-		ev.LSN,
-		ev.TS.UTC().Format(time.RFC3339Nano),
-		ev.Op,
-		ev.Table,
-		ev.PK,
-		event.CanonicalRecord(ev.Before),
-		event.CanonicalRecord(ev.After),
-	)
+// Keep fields separate: concatenating table and key with a delimiter can make
+// different events look like duplicate deliveries.
+type eventSignature struct {
+	lsn           uint64
+	ts            string
+	op            event.Op
+	record        event.RecordID
+	before, after string
+}
+
+func signature(ev event.Event) eventSignature {
+	return eventSignature{
+		lsn: ev.LSN, ts: ev.TS.UTC().Format(time.RFC3339Nano), op: ev.Op,
+		record: ev.Identity(), before: event.CanonicalRecord(ev.Before), after: event.CanonicalRecord(ev.After),
+	}
 }

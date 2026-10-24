@@ -104,6 +104,17 @@ func TestParseNativeErrors(t *testing.T) {
 	}
 }
 
+func TestParseRejectsTrailingJSON(t *testing.T) {
+	native := `{"op":"i","table":"t","pk":"1","after":{"id":1}} {"op":"d","table":"t","pk":"1","before":{"id":1}}`
+	if _, err := (Parser{}).ParseLine([]byte(native)); err == nil {
+		t.Fatal("native parser accepted two JSON values")
+	}
+	debezium := `{"payload":{"op":"c","after":{"id":1},"source":{"table":"t","lsn":1}}} trailing`
+	if _, err := (Parser{Format: FormatDebezium}).ParseLine([]byte(debezium)); err == nil {
+		t.Fatal("debezium parser accepted trailing data")
+	}
+}
+
 func TestParseDebeziumPostgres(t *testing.T) {
 	line := `{"payload":{"before":null,"after":{"id":1,"name":"Ada"},"source":{"table":"users","lsn":123456789,"ts_ms":1767261600000},"op":"c"}}`
 	ev := mustParse(t, Parser{Format: FormatDebezium}, line)

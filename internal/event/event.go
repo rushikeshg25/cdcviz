@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -207,7 +208,7 @@ func ScalarString(v any) string {
 	case string:
 		return value
 	case float64:
-		return strings.TrimSuffix(strings.TrimRight(fmt.Sprintf("%.6f", value), "0"), ".")
+		return strconv.FormatFloat(value, 'f', -1, 64)
 	default:
 		raw, err := json.Marshal(value)
 		if err != nil {

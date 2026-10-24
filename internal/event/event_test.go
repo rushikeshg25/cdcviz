@@ -109,6 +109,18 @@ func TestFormatValueAndScalar(t *testing.T) {
 	if got := ScalarString("abc"); got != "abc" {
 		t.Fatalf("ScalarString = %q, want abc", got)
 	}
+	for _, tc := range []struct {
+		value float64
+		want  string
+	}{
+		{0.0000001, "0.0000001"},
+		{1.2345678901234567, "1.2345678901234567"},
+		{-12.5, "-12.5"},
+	} {
+		if got := ScalarString(tc.value); got != tc.want {
+			t.Fatalf("ScalarString(%v) = %q, want %q", tc.value, got, tc.want)
+		}
+	}
 }
 
 func TestCanonicalRecordIsStable(t *testing.T) {

@@ -168,6 +168,15 @@ func decodeJSON(line []byte, target any) error {
 	if err := dec.Decode(target); err != nil {
 		return err
 	}
+	// One event per line: reject a second value instead of silently ignoring
+	// everything after the first object.
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("unexpected trailing JSON value")
+		}
+		return fmt.Errorf("trailing data after JSON object: %w", err)
+	}
 	return nil
 }
 

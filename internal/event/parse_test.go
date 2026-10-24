@@ -230,3 +230,30 @@ func TestDecoderAll(t *testing.T) {
 		t.Fatalf("events = %d, want 2", len(events))
 	}
 }
+
+func TestEpochPrecisionAndRange(t *testing.T) {
+	cases := map[string]time.Time{
+		`1767261600123456789`:    time.Unix(1767261600, 123456789),
+		`"1767261600123456789"`:  time.Unix(1767261600, 123456789),
+		`1767261600123456`:       time.Unix(1767261600, 123456000),
+		`1767261600.123456789`:   time.Unix(1767261600, 123456789),
+		`1.767261600123456789e9`: time.Unix(1767261600, 123456789),
+		`0`:                      time.Unix(0, 0),
+		`1`:                      time.Unix(1, 0),
+		`-1.5`:                   time.Unix(-2, 500000000),
+		`-1767261600123456789`:   time.Unix(-1767261601, 876543211),
+	}
+	for raw, want := range cases {
+		t.Run(raw, func(t *testing.T) {
+			ev := mustParse(t, Parser{}, `{"op":"i","table":"t","pk":"1","after":{},"ts":`+raw+`}`)
+			if !ev.TS.Equal(want) {
+				t.Fatalf("got %s, want %s", ev.TS, want)
+			}
+		})
+	}
+	for _, raw := range []string{`1e100`, `9223372036854775808`} {
+		if _, err := (Parser{}).ParseLine([]byte(`{"op":"i","table":"t","pk":"1","after":{},"ts":` + raw + `}`)); err == nil {
+			t.Errorf("accepted out-of-range timestamp %s", raw)
+		}
+	}
+}

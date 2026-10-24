@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
+	"math/big"
 	"strconv"
 	"strings"
 	"time"
@@ -319,19 +321,11 @@ func (f *flexTime) UnmarshalJSON(raw []byte) error {
 		f.Time = t
 		return nil
 	}
-	var number json.Number
-	if err := json.Unmarshal(raw, &number); err != nil {
-		return fmt.Errorf("invalid timestamp %s", text)
-	}
-	if integer, err := number.Int64(); err == nil {
-		f.Time = epochToTime(float64(integer))
-		return nil
-	}
-	value, err := number.Float64()
+	t, err := epochToTime(text)
 	if err != nil {
-		return fmt.Errorf("invalid timestamp %s", text)
+		return err
 	}
-	f.Time = epochToTime(value)
+	f.Time = t
 	return nil
 }
 
@@ -351,25 +345,44 @@ func parseTimestamp(s string) (time.Time, error) {
 			return t, nil
 		}
 	}
-	if n, err := strconv.ParseInt(s, 10, 64); err == nil {
-		return epochToTime(float64(n)), nil
-	}
-	return time.Time{}, fmt.Errorf("invalid timestamp %q", s)
+	return epochToTime(s)
 }
 
-func epochToTime(n float64) time.Time {
-	switch {
-	case n <= 0:
-		return time.Time{}
-	case n >= 1e17:
-		return time.Unix(0, int64(n))
-	case n >= 1e14:
-		return time.UnixMicro(int64(n))
-	case n >= 1e11:
-		return time.UnixMilli(int64(n))
-	case n >= 1e8:
-		return time.Unix(int64(n), 0)
-	default:
-		return time.Time{}
+// epochToTime infers units from magnitude, then uses exact decimal arithmetic
+// so nanoseconds and fractional seconds do not pass through float64.
+func epochToTime(text string) (time.Time, error) {
+	invalid := func() (time.Time, error) { return time.Time{}, fmt.Errorf("invalid timestamp %q", text) }
+	approximate, err := strconv.ParseFloat(text, 64)
+	if err != nil || math.IsNaN(approximate) || math.IsInf(approximate, 0) {
+		return invalid()
 	}
+	// Underflow below float64 precision is also below timestamp precision. This
+	// prevents enormous negative exponents from allocating huge rational values.
+	if approximate == 0 {
+		return time.Unix(0, 0).UTC(), nil
+	}
+	n, ok := new(big.Rat).SetString(text)
+	if !ok {
+		return invalid()
+	}
+	max := new(big.Rat).SetInt64(math.MaxInt64)
+	min := new(big.Rat).SetInt64(math.MinInt64)
+	if n.Cmp(max) > 0 || n.Cmp(min) < 0 {
+		return invalid()
+	}
+	magnitude := new(big.Rat).Abs(n)
+	unit := int64(time.Second)
+	switch {
+	case magnitude.Cmp(new(big.Rat).SetInt64(1e17)) >= 0:
+		unit = 1
+	case magnitude.Cmp(new(big.Rat).SetInt64(1e14)) >= 0:
+		unit = int64(time.Microsecond)
+	case magnitude.Cmp(new(big.Rat).SetInt64(1e11)) >= 0:
+		unit = int64(time.Millisecond)
+	}
+	n.Mul(n, new(big.Rat).SetInt64(unit))
+	nanos := new(big.Int).Quo(n.Num(), n.Denom())
+	seconds, remainder := new(big.Int), new(big.Int)
+	seconds.QuoRem(nanos, big.NewInt(int64(time.Second)), remainder)
+	return time.Unix(seconds.Int64(), remainder.Int64()).UTC(), nil
 }

@@ -88,7 +88,10 @@ kcat -C -t cdc.users | cdcviz anomalies
 - `pk` may be omitted if `id`, `pk`, or `key` exists in the row image, or if
   `--pk-field` names the column.
 - `ts` accepts RFC 3339 or an epoch number in seconds, milliseconds,
-  microseconds, or nanoseconds.
+  microseconds, or nanoseconds. Numeric units are inferred from absolute magnitude
+  (at least `1e11` = ms, `1e14` = µs, `1e17` = ns). Fractional seconds and
+  nanoseconds retain their precision; zero is the Unix epoch, and negative
+  values represent dates before it. Use `null` or omit `ts` for unknown time.
 - `lsn` accepts a number, a numeric string, or Postgres `hi/lo` hex.
 
 ### Debezium

@@ -66,14 +66,17 @@ func Timeline(events []event.Event, out io.Writer, opts TimelineOptions) {
 		labelWidth = 30
 	}
 	const suffixWidth = 12
-	barWidth := width - labelWidth - suffixWidth
-	if barWidth < 10 {
-		barWidth = 10
+	const minBarWidth = 10
+	// Keep the whole row inside the requested width even when a key is long and
+	// --width is small; truncate the label rather than overflowing the terminal.
+	if labelWidth+minBarWidth+suffixWidth > width {
+		labelWidth = width - minBarWidth - suffixWidth
 	}
+	barWidth := width - labelWidth - suffixWidth
 
 	start, end := timeRange(events)
-	fmt.Fprintf(out, "%s  %d events | %d records | %s -> %s\n\n",
-		theme.Bold("Timeline"), len(events), len(order), formatRange(start), formatRange(end))
+	fmt.Fprintf(out, "%s  %d events | %d records | %s\n\n",
+		theme.Bold("Timeline"), len(events), len(order), formatSpan(start, end))
 
 	// Busiest records first, then stable by key.
 	sort.SliceStable(order, func(i, j int) bool {
@@ -149,9 +152,20 @@ func timeRange(events []event.Event) (time.Time, time.Time) {
 	return first, last
 }
 
-func formatRange(t time.Time) string {
-	if t.IsZero() {
-		return "--"
+// formatSpan keeps timestamps compact for same-day streams and adds dates when
+// a capture spans midnight.
+func formatSpan(first, last time.Time) string {
+	switch {
+	case first.IsZero() && last.IsZero():
+		return "-- -> --"
+	case first.IsZero():
+		return "-- -> " + event.FormatTime(last)
+	case last.IsZero():
+		return event.FormatTime(first) + " -> --"
 	}
-	return event.FormatTime(t)
+	if first.UTC().Format("2006-01-02") != last.UTC().Format("2006-01-02") {
+		const layout = "2006-01-02 15:04:05"
+		return first.UTC().Format(layout) + " -> " + last.UTC().Format(layout)
+	}
+	return event.FormatTime(first) + " -> " + event.FormatTime(last)
 }

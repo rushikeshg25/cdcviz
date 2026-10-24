@@ -94,6 +94,44 @@ func TestTimelineTruncatesLongKeys(t *testing.T) {
 	}
 }
 
+func TestTimelineFitsNarrowWidthWithLongKey(t *testing.T) {
+	events := []event.Event{
+		mkEvent(0, event.Insert, "very_long_table_name_that_will_not_fit", "1234567890"),
+	}
+	var buf bytes.Buffer
+	Timeline(events, &buf, TimelineOptions{Width: 40})
+	out := buf.String()
+	var row string
+	for _, line := range strings.Split(out, "\n") {
+		if strings.HasPrefix(line, "very_long") {
+			row = line
+		}
+	}
+	if row == "" {
+		t.Fatalf("row missing:\n%s", out)
+	}
+	if got := len([]rune(row)); got != 40 {
+		t.Fatalf("row is %d columns, want 40: %q", got, row)
+	}
+	label := strings.SplitN(row, " ", 2)[0]
+	if !strings.HasSuffix(label, "~") {
+		t.Fatalf("label = %q, want a truncation marker", label)
+	}
+}
+
+func TestTimelineShowsDatesAcrossMidnight(t *testing.T) {
+	first := time.Date(2026, 12, 31, 23, 59, 59, 0, time.UTC)
+	events := []event.Event{
+		{TS: first, Op: event.Insert, Table: "t", PK: "1"},
+		{TS: first.Add(2 * time.Second), Op: event.Update, Table: "t", PK: "1"},
+	}
+	var buf bytes.Buffer
+	Timeline(events, &buf, TimelineOptions{Width: 80})
+	if !strings.Contains(buf.String(), "2026-12-31 23:59:59 -> 2027-01-01 00:00:01") {
+		t.Fatalf("missing dated range:\n%s", buf.String())
+	}
+}
+
 func TestTimelineMaxRows(t *testing.T) {
 	var events []event.Event
 	for i := 0; i < 5; i++ {

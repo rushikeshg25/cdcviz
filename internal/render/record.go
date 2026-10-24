@@ -26,8 +26,8 @@ func Record(events []event.Event, table, pk string, out io.Writer, theme *Theme)
 	}
 
 	first, last := timeRange(history)
-	fmt.Fprintf(out, "%s  %d events | %s -> %s\n\n",
-		theme.Bold(table+"/"+pk), len(history), formatRange(first), formatRange(last))
+	fmt.Fprintf(out, "%s  %d events | %s\n\n",
+		theme.Bold(table+"/"+pk), len(history), formatSpan(first, last))
 
 	for i, ev := range history {
 		fmt.Fprintf(out, "  #%-2d %s  %s %-6s  lsn=%s\n",

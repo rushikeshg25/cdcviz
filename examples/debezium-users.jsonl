@@ -1,0 +1,5 @@
+{"payload":{"before":null,"after":{"id":1,"name":"Ada","email":"ada@example.com"},"source":{"table":"users","lsn":100,"ts_ms":1767261600000},"op":"c"}}
+{"payload":{"before":{"id":1,"name":"Ada"},"after":{"id":1,"name":"Ada Lovelace"},"source":{"table":"users","lsn":103,"ts_ms":1767261602000},"op":"u"}}
+{"payload":{"before":null,"after":{"id":2,"name":"Grace"},"source":{"table":"users","lsn":107,"ts_ms":1767261604000},"op":"c"}}
+{"payload":{"before":{"id":2,"name":"Grace"},"after":null,"source":{"table":"users","lsn":109,"ts_ms":1767261606000},"op":"d"}}
+{"payload":{"before":{"id":2,"name":"Grace"},"after":{"id":2,"name":"Grace Hopper"},"source":{"table":"users","lsn":112,"ts_ms":1767261608000},"op":"u"}}

@@ -1,0 +1,17 @@
+{"lsn":100,"ts":"2026-01-01T10:00:00Z","op":"insert","table":"users","pk":"1","after":{"email":"ada@example.com","id":1,"name":"Ada"}}
+{"lsn":103,"ts":"2026-01-01T10:00:02Z","op":"update","table":"users","pk":"1","before":{"email":"ada@example.com","id":1,"name":"Ada"},"after":{"email":"ada@example.com","id":1,"name":"Ada Lovelace"}}
+{"lsn":107,"ts":"2026-01-01T10:00:04Z","op":"insert","table":"users","pk":"2","after":{"id":2,"name":"Grace"}}
+{"lsn":109,"ts":"2026-01-01T10:00:05Z","op":"insert","table":"orders","pk":"10","after":{"id":10,"status":"pending","user_id":1}}
+{"lsn":114,"ts":"2026-01-01T10:00:07Z","op":"update","table":"users","pk":"1","before":{"email":"ada@example.com","id":1,"name":"Ada Lovelace"},"after":{"email":"ada@lovelace.dev","id":1,"name":"Ada Lovelace"}}
+{"lsn":114,"ts":"2026-01-01T10:00:07Z","op":"update","table":"users","pk":"1","before":{"email":"ada@example.com","id":1,"name":"Ada Lovelace"},"after":{"email":"ada@lovelace.dev","id":1,"name":"Ada Lovelace"}}
+{"lsn":118,"ts":"2026-01-01T10:00:09Z","op":"update","table":"orders","pk":"10","before":{"id":10,"status":"pending"},"after":{"id":10,"status":"paid"}}
+{"lsn":121,"ts":"2026-01-01T10:00:11Z","op":"delete","table":"users","pk":"2","before":{"id":2,"name":"Grace"}}
+{"lsn":125,"ts":"2026-01-01T10:00:13Z","op":"update","table":"orders","pk":"10","before":{"id":10,"status":"paid"},"after":{"id":10,"status":"shipped"}}
+{"lsn":128,"ts":"2026-01-01T10:00:15Z","op":"delete","table":"orders","pk":"11","before":{"id":11,"status":"open"}}
+{"lsn":130,"ts":"2026-01-01T10:00:16Z","op":"update","table":"users","pk":"2","before":{"id":2},"after":{"id":2,"name":"Grace Hopper"}}
+{"lsn":133,"ts":"2026-01-01T10:00:18Z","op":"insert","table":"users","pk":"2","after":{"id":2,"name":"Grace Hopper"}}
+{"lsn":137,"ts":"2026-01-01T10:00:20Z","op":"insert","table":"users","pk":"1","after":{"email":"ada@lovelace.dev","id":1,"name":"Ada Lovelace"}}
+{"lsn":120,"ts":"2026-01-01T10:00:21Z","op":"update","table":"orders","pk":"10","before":{"id":10,"status":"shipped"},"after":{"id":10,"status":"delivered"}}
+{"lsn":140,"ts":"2026-01-01T10:00:18Z","op":"update","table":"users","pk":"1","before":{"id":1,"name":"Ada Lovelace"},"after":{"id":1,"name":"Ada L."}}
+{"lsn":143,"ts":"2026-01-01T10:00:22Z","op":"update","table":"users","pk":"1","before":{"id":1,"name":"Ada L."},"after":{"id":1,"name":"Ada L."}}
+{"lsn":150,"ts":"2026-01-01T10:00:23Z","op":"read","table":"orders","pk":"10","after":{"id":10,"status":"delivered","user_id":1}}

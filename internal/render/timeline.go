@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/rushikeshg25/cdcviz/internal/event"
@@ -90,21 +91,26 @@ func Timeline(events []event.Event, out io.Writer, opts TimelineOptions) {
 		return order[i].PK < order[j].PK
 	})
 
-	columns := make(map[event.RecordID][]event.Op, len(order))
+	// Hidden records still determine counts and the shared sequence axis, but
+	// only visible records need bar storage.
+	visible := order[:min(maxRows, len(order))]
+	columns := make(map[event.RecordID][]event.Op, len(visible))
+	for _, key := range visible {
+		columns[key] = make([]event.Op, barWidth)
+	}
 	for i := range events {
 		ev := events[i]
+		marks := columns[ev.Identity()]
+		if marks == nil {
+			continue
+		}
 		column := 0
 		if len(events) > 1 {
 			column = i * (barWidth - 1) / (len(events) - 1)
 		}
-		marks := columns[ev.Identity()]
-		if marks == nil {
-			marks = make([]event.Op, barWidth)
-		}
 		// Later events overwrite earlier ones when they share a column; the
 		// event count still accounts for every event.
 		marks[column] = ev.Op
-		columns[ev.Identity()] = marks
 	}
 
 	rendered := 0
@@ -114,17 +120,18 @@ func Timeline(events []event.Event, out io.Writer, opts TimelineOptions) {
 		}
 		rendered++
 		marks := columns[key]
-		bar := ""
+		var bar strings.Builder
+		bar.Grow(barWidth)
 		for _, op := range marks {
 			if op == "" {
-				bar += theme.Dim(".")
+				bar.WriteString(theme.Dim("."))
 				continue
 			}
-			bar += theme.ColorOp(op, OpSymbol(op))
+			bar.WriteString(theme.ColorOp(op, OpSymbol(op)))
 		}
 		fmt.Fprintf(out, "%-*s %s %s\n",
 			labelWidth, truncate(groups[key].key, labelWidth),
-			bar,
+			bar.String(),
 			theme.Dim(fmt.Sprintf("%3d events", groups[key].count)))
 	}
 	if len(order) > rendered {

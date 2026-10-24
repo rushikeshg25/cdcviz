@@ -186,3 +186,23 @@ func TestOpSymbol(t *testing.T) {
 		}
 	}
 }
+
+func TestTimelineLimitPreservesSequenceAxis(t *testing.T) {
+	events := []event.Event{
+		mkEvent(0, event.Insert, "t", "a"),
+		mkEvent(1, event.Insert, "t", "b"),
+		mkEvent(2, event.Insert, "t", "c"),
+		mkEvent(3, event.Delete, "t", "a"),
+	}
+	var full, limited bytes.Buffer
+	Timeline(events, &full, TimelineOptions{Width: 80, MaxRows: 3})
+	Timeline(events, &limited, TimelineOptions{Width: 80, MaxRows: 1})
+	for _, line := range strings.Split(full.String(), "\n") {
+		if strings.HasPrefix(line, "t/a") && !strings.Contains(limited.String(), line) {
+			t.Fatalf("limiting rows changed the visible sequence axis:\n%s", limited.String())
+		}
+	}
+	if strings.Contains(limited.String(), "t/b") || !strings.Contains(limited.String(), "2 more records") {
+		t.Fatalf("incorrect row limit:\n%s", limited.String())
+	}
+}

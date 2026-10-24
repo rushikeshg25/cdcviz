@@ -1,0 +1,7 @@
+/bin/
+/cdcviz
+*.out
+coverage.html
+.DS_Store
+.idea/
+.vscode/

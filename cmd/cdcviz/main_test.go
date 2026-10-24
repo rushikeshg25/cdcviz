@@ -63,6 +63,15 @@ func TestParseArgs(t *testing.T) {
 	if !opts.json || opts.pkField != "uid" {
 		t.Fatalf("opts = %+v", opts)
 	}
+
+	// "help" is a command only in the first position, so it remains usable as
+	// a primary key value.
+	if _, rest, err = parseArgs([]string{"record", "users", "help"}); err != nil {
+		t.Fatal(err)
+	}
+	if strings.Join(rest, " ") != "record users help" {
+		t.Fatalf("rest = %v, want record users help", rest)
+	}
 }
 
 func TestParseArgsRejectsBadValues(t *testing.T) {

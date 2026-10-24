@@ -31,7 +31,7 @@ commands:
   anomalies             ordering, duplication, and lifecycle problems (--json)
   record <table> <pk>   full history of one record
   replay                replay events one by one (--speed, --limit)
-  demo                  run every view against a built-in scenario
+  demo                  run the built-in scenario
   version               print the version
 
 input:
@@ -229,7 +229,7 @@ func parseArgs(args []string) (options, []string, error) {
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		if arg == "-h" || arg == "--help" || arg == "help" {
+		if arg == "-h" || arg == "--help" {
 			return opts, nil, nil
 		}
 		if !strings.HasPrefix(arg, "-") || arg == "-" {

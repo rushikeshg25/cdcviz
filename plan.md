@@ -90,7 +90,7 @@ and tests stay diffable. `--speed 0` makes playback instant.
 
 ### v0.2 — pipeline ergonomics
 - [ ] `cdcviz tail` for a long-running stdin stream with bounded memory.
-- [ ] `--fail-on error|warning|any` for CI gates (with a dedicated exit code).
+- [x] `--fail-on error|warning|any` for CI gates (with a dedicated exit code).
 - [ ] Anomaly allowlist file (`--ignore-kind`, `--ignore-table:pk`).
 - [ ] Multiple inputs merged by LSN, for comparing a source and a replica.
 - [ ] `--since` / `--until` time filters and `--table` filters.

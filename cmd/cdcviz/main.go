@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -55,6 +56,7 @@ flags (may appear before or after the command):
       --width N       timeline width (default 100)
       --max-rows N    timeline rows (default 20)
       --json          JSON output for stats, anomalies, and demo
+      --fail-on LEVEL anomalies exit 3 on error, warning-or-higher, or any finding
       --speed N       replay events per second (0 = no delay, default 8)
       --limit N       replay only the first N events
       --              treat remaining arguments as literal values
@@ -68,14 +70,19 @@ type options struct {
 	width   int
 	maxRows int
 	json    bool
+	failOn  string
 	speed   float64
 	limit   int
 }
 
 var errUsage = errors.New("usage")
+var errFindings = errors.New("anomalies meet the --fail-on threshold")
 
 func main() {
 	if err := run(os.Args[1:], os.Stdout, os.Stderr); err != nil {
+		if errors.Is(err, errFindings) {
+			os.Exit(3)
+		}
 		if errors.Is(err, errUsage) {
 			os.Exit(2)
 		}
@@ -107,6 +114,10 @@ func run(args []string, stdout, stderr io.Writer) error {
 			fmt.Fprintf(stderr, "cdcviz: record needs <table> <pk>\n\n%s", usage)
 			return errUsage
 		}
+	}
+	if opts.failOn != "" && cmd != "anomalies" {
+		fmt.Fprintf(stderr, "cdcviz: --fail-on requires the anomalies command\n\n%s", usage)
+		return errUsage
 	}
 	theme := render.NewTheme(colorEnabled(opts.color, stdout))
 
@@ -148,9 +159,23 @@ func run(args []string, stdout, stderr io.Writer) error {
 			if findings == nil {
 				findings = []anomaly.Anomaly{}
 			}
-			return writeJSON(stdout, findings)
+			if err := writeJSON(stdout, findings); err != nil {
+				return err
+			}
+		} else {
+			report := bufio.NewWriter(stdout)
+			render.Anomalies(findings, report, theme)
+			if err := report.Flush(); err != nil {
+				return err
+			}
 		}
-		render.Anomalies(findings, stdout, theme)
+		for _, finding := range findings {
+			if opts.failOn == "any" ||
+				(opts.failOn == "warning" && finding.Severity != anomaly.Info) ||
+				(opts.failOn == "error" && finding.Severity == anomaly.Error) {
+				return errFindings
+			}
+		}
 		return nil
 	case "record":
 		events, err := loadEvents(opts)
@@ -277,6 +302,11 @@ func parseArgs(args []string) (options, []string, error) {
 			opts.json = true
 			if hasValue {
 				opts.json, err = strconv.ParseBool(value)
+			}
+		case "fail-on":
+			opts.failOn, err = next()
+			if err == nil && opts.failOn != "error" && opts.failOn != "warning" && opts.failOn != "any" {
+				err = fmt.Errorf("--fail-on must be error, warning, or any")
 			}
 		case "input", "i":
 			opts.input, err = next()

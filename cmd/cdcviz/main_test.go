@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -341,6 +342,68 @@ func TestUsageErrorsExplainCause(t *testing.T) {
 		_, stderr, err := runCLI(t, tc.args...)
 		if !errors.Is(err, errUsage) || !strings.Contains(stderr, tc.want) {
 			t.Errorf("args=%v stderr=%q err=%v", tc.args, stderr, err)
+		}
+	}
+}
+
+func TestFailOnThresholds(t *testing.T) {
+	insert := `{"op":"i","table":"t","pk":"1","lsn":1,"after":{"v":1}}` + "\n"
+	noop := `{"op":"u","table":"t","pk":"1","lsn":2,"before":{"v":1},"after":{"v":1}}` + "\n"
+	changed := `{"op":"u","table":"t","pk":"1","lsn":3,"before":{"v":1},"after":{"v":2}}` + "\n"
+	for _, tc := range []struct {
+		name, input string
+		minimum     int
+	}{
+		{"empty", "", 4}, {"clean", insert, 4}, {"info", insert + noop, 3},
+		{"warning", insert + insert, 2}, {"error", changed, 1},
+	} {
+		for level, threshold := range []string{"", "error", "warning", "any"} {
+			for _, asJSON := range []bool{false, true} {
+				args := []string{"anomalies", "--input", inputFile(t, tc.input)}
+				if threshold != "" {
+					args = append(args, "--fail-on", threshold)
+				}
+				if asJSON {
+					args = append(args, "--json")
+				}
+				out, _, err := runCLI(t, args...)
+				wantFail := level >= tc.minimum
+				if errors.Is(err, errFindings) != wantFail || (err != nil && !wantFail) {
+					t.Fatalf("%s/%s json=%v: err=%v want failure=%v", tc.name, threshold, asJSON, err, wantFail)
+				}
+				if asJSON {
+					var findings []anomaly.Anomaly
+					if err := json.Unmarshal([]byte(out), &findings); err != nil {
+						t.Fatal(err)
+					}
+				} else if out == "" {
+					t.Fatal("missing report")
+				}
+			}
+		}
+	}
+	for _, args := range [][]string{{"anomalies", "--fail-on", "bogus"}, {"stats", "--fail-on", "any"}} {
+		if _, _, err := runCLI(t, args...); !errors.Is(err, errUsage) {
+			t.Fatalf("args=%v err=%v", args, err)
+		}
+	}
+}
+
+// A report that could not be written is an I/O failure, not a successful CI gate.
+type brokenWriter struct{}
+
+func (brokenWriter) Write([]byte) (int, error) { return 0, io.ErrClosedPipe }
+
+func TestFailOnReportsOutputErrorsFirst(t *testing.T) {
+	path := inputFile(t, demoJSON(t))
+	for _, asJSON := range []bool{false, true} {
+		args := []string{"anomalies", "--input", path, "--fail-on", "any"}
+		if asJSON {
+			args = append(args, "--json")
+		}
+		err := run(args, brokenWriter{}, io.Discard)
+		if !errors.Is(err, io.ErrClosedPipe) {
+			t.Fatalf("json=%v: err=%v, want output error", asJSON, err)
 		}
 	}
 }

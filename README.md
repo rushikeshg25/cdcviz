@@ -127,6 +127,7 @@ version               print the version
     --width N       timeline width (default 100)
     --max-rows N    timeline rows (default 20)
     --json          JSON output for stats, anomalies, and demo
+    --fail-on LEVEL anomalies: error, warning, or any (exit 3)
     --speed N       replay events per second (0 = no delay, default 8)
     --limit N       replay only the first N events
 ```
@@ -137,6 +138,12 @@ arguments and invalid replay speeds produce a usage error (exit code 2).
 
 `--color auto` is on only for a terminal and honours `NO_COLOR`. `replay`
 animates only when writing to a terminal, so piped output stays line-oriented.
+
+For CI, `cdcviz anomalies --input capture.jsonl --json --fail-on warning`
+prints the complete report, then exits with code **3** if it contains a warning
+or error. `error` fails only on errors; `any` also includes informational findings.
+Without `--fail-on`, findings do not change the exit status. Success is 0, input
+or I/O failure is 1, and usage errors are 2. This flag applies only to `anomalies`.
 
 ## Views
 
@@ -246,7 +253,7 @@ Design choices:
 v0.1 is complete and usable: both input formats, all views, ten anomaly checks,
 JSON output, tests, and CI are in place. CI runs `gofmt`, `go vet`, and
 `go test -race`. See [plan.md](plan.md) for the roadmap, including gap detection
-and a `--fail-on` exit code for CI.
+and further pipeline ergonomics.
 
 ## Development
 

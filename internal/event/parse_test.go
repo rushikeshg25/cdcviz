@@ -161,6 +161,14 @@ func TestAutoDetectsFormat(t *testing.T) {
 	}
 }
 
+func TestAutoDetectsDebeziumWithTopLevelTable(t *testing.T) {
+	line := `{"table":"users","payload":{"op":"c","after":{"id":2},"source":{"lsn":3}}}`
+	ev := mustParse(t, Parser{Format: FormatAuto}, line)
+	if ev.Op != Insert || ev.Table != "users" || ev.PK != "2" {
+		t.Fatalf("unexpected event: %+v", ev)
+	}
+}
+
 func TestParseFormat(t *testing.T) {
 	for _, raw := range []string{"", "auto", "native", "debezium", "DEBEZIUM"} {
 		if _, err := ParseFormat(raw); err != nil {

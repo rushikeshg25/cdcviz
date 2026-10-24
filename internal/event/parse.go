@@ -63,10 +63,12 @@ func (p Parser) ParseLine(line []byte) (Event, error) {
 func detectFormat(line []byte) Format {
 	var probe struct {
 		Payload json.RawMessage `json:"payload"`
-		Table   string          `json:"table"`
 	}
 	if err := json.Unmarshal(line, &probe); err == nil {
-		if len(probe.Payload) > 0 && probe.Table == "" {
+		// A payload object is the reliable Debezium signal; a top-level table
+		// fallback is valid too, so do not let it force the native parser.
+		payload := bytes.TrimSpace(probe.Payload)
+		if len(payload) > 0 && !bytes.Equal(payload, []byte("null")) {
 			return FormatDebezium
 		}
 	}

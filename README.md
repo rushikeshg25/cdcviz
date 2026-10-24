@@ -131,6 +131,10 @@ version               print the version
     --limit N       replay only the first N events
 ```
 
+Use `--` before record arguments that begin with a dash, for example:
+`cdcviz record --input events.jsonl -- users -1`. Unexpected positional
+arguments and invalid replay speeds produce a usage error (exit code 2).
+
 `--color auto` is on only for a terminal and honours `NO_COLOR`. `replay`
 animates only when writing to a terminal, so piped output stays line-oriented.
 

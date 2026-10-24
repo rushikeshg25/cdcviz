@@ -318,3 +318,29 @@ func TestRecordIdentityBoundaries(t *testing.T) {
 		})
 	}
 }
+
+func TestLiteralRecordArguments(t *testing.T) {
+	path := inputFile(t, `{"op":"i","table":"--help","pk":"-1","after":{}}`+"\n")
+	out, _, err := runCLI(t, "record", "--input", path, "--", "--help", "-1")
+	if err != nil || !strings.Contains(out, "--help/-1") {
+		t.Fatalf("out=%q err=%v", out, err)
+	}
+}
+
+func TestUsageErrorsExplainCause(t *testing.T) {
+	for _, tc := range []struct {
+		args []string
+		want string
+	}{
+		{[]string{"--width", "0"}, "--width must be positive"},
+		{[]string{"--speed", "NaN"}, "--speed"},
+		{[]string{"--speed", "+Inf"}, "--speed"},
+		{[]string{"--speed", "1e-100"}, "--speed"},
+		{[]string{"stats", "unexpected"}, "arguments"},
+	} {
+		_, stderr, err := runCLI(t, tc.args...)
+		if !errors.Is(err, errUsage) || !strings.Contains(stderr, tc.want) {
+			t.Errorf("args=%v stderr=%q err=%v", tc.args, stderr, err)
+		}
+	}
+}

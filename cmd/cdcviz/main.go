@@ -6,9 +6,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rushikeshg25/cdcviz/internal/anomaly"
 	"github.com/rushikeshg25/cdcviz/internal/demo"
@@ -55,6 +57,7 @@ flags (may appear before or after the command):
       --json          JSON output for stats, anomalies, and demo
       --speed N       replay events per second (0 = no delay, default 8)
       --limit N       replay only the first N events
+      --              treat remaining arguments as literal values
 `
 
 type options struct {
@@ -84,7 +87,7 @@ func main() {
 func run(args []string, stdout, stderr io.Writer) error {
 	opts, rest, err := parseArgs(args)
 	if err != nil {
-		fmt.Fprint(stderr, usage)
+		fmt.Fprintf(stderr, "cdcviz: %v\n\n%s", err, usage)
 		return fmt.Errorf("%w: %v", errUsage, err)
 	}
 	if len(rest) == 0 || rest[0] == "help" {
@@ -93,6 +96,18 @@ func run(args []string, stdout, stderr io.Writer) error {
 	}
 
 	cmd, cmdArgs := rest[0], rest[1:]
+	switch cmd {
+	case "timeline", "tables", "stats", "anomalies", "replay", "demo", "version":
+		if len(cmdArgs) != 0 {
+			fmt.Fprintf(stderr, "cdcviz: %s takes no arguments\n\n%s", cmd, usage)
+			return errUsage
+		}
+	case "record":
+		if len(cmdArgs) != 2 {
+			fmt.Fprintf(stderr, "cdcviz: record needs <table> <pk>\n\n%s", usage)
+			return errUsage
+		}
+	}
 	theme := render.NewTheme(colorEnabled(opts.color, stdout))
 
 	switch cmd {
@@ -138,9 +153,6 @@ func run(args []string, stdout, stderr io.Writer) error {
 		render.Anomalies(findings, stdout, theme)
 		return nil
 	case "record":
-		if len(cmdArgs) != 2 {
-			return fmt.Errorf("record needs <table> <pk>")
-		}
 		events, err := loadEvents(opts)
 		if err != nil {
 			return err
@@ -229,6 +241,10 @@ func parseArgs(args []string) (options, []string, error) {
 
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
+		if arg == "--" {
+			rest = append(rest, args[i+1:]...)
+			break
+		}
 		if arg == "-h" || arg == "--help" {
 			return opts, nil, nil
 		}
@@ -300,8 +316,9 @@ func parseArgs(args []string) (options, []string, error) {
 			raw, err = next()
 			if err == nil {
 				opts.speed, err = strconv.ParseFloat(raw, 64)
-				if err == nil && opts.speed < 0 {
-					err = fmt.Errorf("--speed must not be negative")
+				if err == nil && (math.IsNaN(opts.speed) || math.IsInf(opts.speed, 0) || opts.speed < 0 ||
+					(opts.speed > 0 && float64(time.Second)/opts.speed >= float64(math.MaxInt64))) {
+					err = fmt.Errorf("--speed must be finite and nonnegative, with an interval below 292 years")
 				}
 			}
 		case "limit":

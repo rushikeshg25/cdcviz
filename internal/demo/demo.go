@@ -1,6 +1,6 @@
 // Package demo provides a deterministic CDC scenario so cdcviz can be tried
-// without a real database. The stream intentionally contains one of each
-// common integrity problem, annotated below.
+// without a real database. The stream intentionally contains eight
+// representative integrity problems, annotated below.
 package demo
 
 import (

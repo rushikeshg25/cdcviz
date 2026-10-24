@@ -28,7 +28,7 @@ sits at the end of a pipeline.
 - [x] Single-record history with before/after field changes.
 - [x] Aggregate stats with throughput and anomaly rollups, plus JSON output.
 - [x] Animated replay with speed and limit controls.
-- [x] Deterministic demo scenario that injects one of each common bug.
+- [x] Deterministic demo scenario that injects eight representative bugs.
 - [x] CLI with flags before or after the command, color control, and examples.
 - [x] Tests for parsing, detection, stats, every renderer, and the CLI.
 - [x] CI (gofmt, vet, race tests, build) and sample NDJSON inputs.

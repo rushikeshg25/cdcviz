@@ -1,6 +1,10 @@
 # cdcviz
 
-Inspect change-data-capture streams from the terminal. `cdcviz` turns
+[![ci](https://github.com/rushikeshg25/cdcviz/actions/workflows/ci.yml/badge.svg)](https://github.com/rushikeshg25/cdcviz/actions/workflows/ci.yml)
+[![Go 1.24+](https://img.shields.io/badge/go-1.24%2B-00ADD8?logo=go)](go.mod)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
+**A terminal inspector for change-data-capture streams.** `cdcviz` turns
 newline-delimited CDC events into lifecycle timelines, per-table summaries,
 record histories, and integrity findings — with no database, no daemon, and no
 third-party dependencies.
@@ -23,11 +27,20 @@ is delivered twice, a row that comes back from the dead, an LSN that moves
 backwards, or a stream that silently skips a record. `cdcviz` is built to make
 those visible in one screen.
 
+It is aimed at developers and data engineers debugging replication pipelines,
+QA sessions, and incident reviews: pipe in a capture, scan the timeline, open the
+suspect record, and get a list of ordering and lifecycle problems without
+standing up a database or a UI. It is a local analysis tool, not a production
+consumer; see [Limits](#limits).
+
 ## Install
 
-Requires Go 1.24+. There are no third-party dependencies.
+Requires Go 1.24+ and no third-party dependencies (Linux, macOS, or Windows).
 
 ```sh
+go install github.com/rushikeshg25/cdcviz/cmd/cdcviz@latest
+
+# or from a checkout:
 go build -o bin/cdcviz ./cmd/cdcviz
 ./bin/cdcviz demo
 ```
@@ -37,7 +50,7 @@ Or `make build`, `make test`, `make demo`.
 ## Try it
 
 ```sh
-# Built-in scenario, with one of every common integrity bug.
+# Built-in scenario with eight deliberate integrity problems.
 cdcviz demo
 
 # The same scenario as an NDJSON stream (input for the other commands).
@@ -54,7 +67,9 @@ cdcviz stats     --input demo.jsonl --json
 cdcviz tables --input examples/debezium-users.jsonl
 ```
 
-Input comes from stdin when `--input` is omitted:
+Input comes from stdin when `--input` is omitted. Each line must contain exactly
+one event; trailing data after the JSON object is an error, not a silent
+truncation.
 
 ```sh
 kcat -C -t cdc.users | cdcviz anomalies
@@ -85,6 +100,8 @@ kcat -C -t cdc.users | cdcviz anomalies
 
 Both the Postgres (`source.lsn`) and MySQL (`source.pos` + top-level `key`)
 envelopes are supported. `--format native|debezium` disables auto-detection.
+MySQL `pos` values are only comparable within one binlog file, so treating them
+as a global sequence can produce false `out-of-order-lsn` findings.
 
 ## Commands
 
@@ -95,7 +112,7 @@ stats                 aggregate counters (--json)
 anomalies             ordering, duplication, and lifecycle problems (--json)
 record <table> <pk>   full history of one record
 replay                replay events one by one (--speed, --limit)
-demo                  run every view against a built-in scenario
+demo                  run the built-in scenario through the main views
 version               print the version
 ```
 
@@ -138,13 +155,15 @@ users   11      4       6       1       0     2     6
 TOTAL   17      5       9       2       1     4     8
 ```
 
-**`stats --json`** is meant for scripts and CI dashboards:
+**`stats --json`** is meant for scripts and CI dashboards (output abridged):
 
 ```json
 {
   "events": 17,
   "keys": 4,
   "ops": {"delete": 2, "insert": 5, "read": 1, "update": 9},
+  "first_ts": "2026-01-01T10:00:00Z",
+  "last_ts": "2026-01-01T10:00:23Z",
   "duration_seconds": 23,
   "events_per_second": 0.7391304347826086,
   "anomalies": 8,
@@ -212,7 +231,15 @@ Design choices:
 - Primary keys must be present or derivable (`pk`, `id`, `key`, or `--pk-field`).
 - Transactions are not grouped; each event is treated independently.
 - Anomaly rules are stream-local and have no schema or allowlist support.
-- Globs and schema changes are not modeled.
+- LSN gaps and schema changes are not modeled. The detector can see a sequence
+  move backwards, but not a record that never arrived.
+
+## Status
+
+v0.1 is complete and usable: both input formats, all views, ten anomaly checks,
+JSON output, tests, and CI are in place. CI runs `gofmt`, `go vet`, and
+`go test -race`. See [plan.md](plan.md) for the roadmap, including gap detection
+and a `--fail-on` exit code for CI.
 
 ## Development
 

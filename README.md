@@ -24,8 +24,8 @@ Legend:  + insert   ~ update   - delete   . read
 Most CDC tooling shows you rows. The hard bugs are not in the rows — they are in
 the story between them: an update that arrives before its insert, a delete that
 is delivered twice, a row that comes back from the dead, an LSN that moves
-backwards, or a stream that silently skips a record. `cdcviz` is built to make
-those visible in one screen.
+backwards, or a delete for a row that was never inserted. `cdcviz` is built to
+make those visible in one screen.
 
 It is aimed at developers and data engineers debugging replication pipelines,
 QA sessions, and incident reviews: pipe in a capture, scan the timeline, open the
